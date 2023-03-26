@@ -253,7 +253,7 @@ fn app_config() -> Command<'static> {
             .long("listening-port")
             .takes_value(true))
         .arg(Arg::new("output_format")
-            .help("Sets the output format for scan results, can be set to CSV or JSON, defaults to line-delimited.")
+            .help("Sets the output format for scan results, can be set to CSV or JSON, defaults to line-delimited, cannot be used while streaming results")
             .short('o')
             .takes_value(true)
             .default_value("default"))
