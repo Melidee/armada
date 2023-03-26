@@ -1,15 +1,18 @@
 mod args;
+mod config;
 mod ranges;
 mod run_variants;
-mod config;
 
+use std::collections::HashMap;
 use std::net::{
     IpAddr,
     Ipv4Addr,
     Ipv6Addr,
+    SocketAddr,
 };
 
 use armada_lib::Armada;
+use serde_json;
 
 use crate::args::ArmadaConfig;
 
@@ -21,10 +24,11 @@ async fn main() {
         quiet_mode,
         rate_limit,
         listening_port,
+        output_format,
         retries,
         timeout,
         source_ips,
-        stream_results
+        stream_results,
     } = args::get_armada_config();
 
     let armada = Armada::new(listening_port);
@@ -35,22 +39,38 @@ async fn main() {
         use run_variants::QuietArmada;
 
         armada
-            .run_quiet(targets, ports, source_ipv4, source_ipv6, retries, timeout, rate_limit, stream_results)
+            .run_quiet(
+                targets,
+                ports,
+                source_ipv4,
+                source_ipv6,
+                retries,
+                timeout,
+                rate_limit,
+                stream_results,
+            )
             .await
     } else {
         use run_variants::ProgressArmada;
 
         armada
-            .run_with_stats(targets, ports, source_ipv4, source_ipv6, retries, timeout, rate_limit, stream_results)
+            .run_with_stats(
+                targets,
+                ports,
+                source_ipv4,
+                source_ipv6,
+                retries,
+                timeout,
+                rate_limit,
+                stream_results,
+            )
             .await
     };
 
     if !stream_results {
         syn_scan_results.sort();
 
-        syn_scan_results.into_iter().for_each(|remote| {
-            println!("{}:{}", remote.ip(), remote.port());
-        });
+        println!("{}", format_output(output_format, syn_scan_results).await);
     }
 }
 
@@ -82,4 +102,38 @@ async fn split_and_enforce_source_ips(source_ips: Option<Vec<IpAddr>>) -> (Vec<I
         .collect();
 
     (source_ipv4_addrs, source_ipv6_addrs)
+}
+
+async fn format_output(format: String, results: Vec<SocketAddr>) -> String {
+    match format.to_lowercase().as_str() {
+        "csv" => {
+            let mut ip_port_groups: HashMap<String, Vec<String>> = HashMap::new();
+            results.into_iter().for_each(|remote| {
+                ip_port_groups
+                    .entry(remote.ip().to_string())
+                    .or_insert(vec![])
+                    .push(remote.port().to_string());
+            });
+            ip_port_groups
+                .iter()
+                .map(|(ip, ports)| format!("{},{}", ip, ports.join(",")))
+                .collect::<Vec<String>>()
+                .join("\n")
+        }
+        "json" => {
+            let mut ip_port_groups: HashMap<String, Vec<u16>> = HashMap::new();
+            results.into_iter().for_each(|remote| {
+                ip_port_groups
+                    .entry(remote.ip().to_string())
+                    .or_insert(vec![])
+                    .push(remote.port());
+            });
+            serde_json::to_string(&ip_port_groups).expect("failed to serialize scan results to json")
+        }
+        _ => results
+            .iter()
+            .map(|remote| format!("{}:{}", remote.ip(), remote.port()))
+            .collect::<Vec<String>>()
+            .join("\n"),
+    }
 }

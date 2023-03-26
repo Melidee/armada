@@ -22,6 +22,7 @@ pub(crate) struct ArmadaConfig {
     pub(crate) quiet_mode: bool,
     pub(crate) rate_limit: Option<usize>,
     pub(crate) listening_port: u16,
+    pub(crate) output_format: String,
     pub(crate) retries: u8,
     pub(crate) timeout: Duration,
     pub(crate) source_ips: Option<Vec<IpAddr>>,
@@ -40,6 +41,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
     let quiet_mode = get_quiet_mode(&matches);
     let rate_limit = get_rate_limit(&matches);
     let listening_port = get_listening_port(&matches);
+    let output_format = get_output_format(&matches);
     let retries = get_retries(&matches);
     let timeout = get_timeout(&matches);
     let source_ips = get_source_ip_addresses(&matches);
@@ -57,6 +59,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
         quiet_mode,
         rate_limit,
         listening_port,
+        output_format,
         retries,
         timeout,
         source_ips,
@@ -169,6 +172,10 @@ fn get_listening_port(matches: &ArgMatches) -> u16 {
         .unwrap_or_else(|| rand::thread_rng().gen_range(50_000..60_000))
 }
 
+fn get_output_format(matches: &ArgMatches) -> String {
+    matches.get_one::<String>("output_format").unwrap().to_string()
+}
+
 fn get_retries(matches: &ArgMatches) -> u8 {
     matches
         .value_of("retries")
@@ -241,15 +248,20 @@ fn app_config() -> Command<'static> {
             .short('q')
             .long("quiet")
             .takes_value(false))
+        .arg(Arg::new("listening_port")
+            .help("Sets the port to listen on. If unset, armada will pick a random port from 50000-60000.")
+            .long("listening-port")
+            .takes_value(true))
+        .arg(Arg::new("output_format")
+            .help("Sets the output format for scan results, can be set to CSV or JSON, defaults to line-delimited.")
+            .short('o')
+            .takes_value(true)
+            .default_value("default"))
         .arg(Arg::new("rate_limit")
             .help("Sets the maximum packets per second. \
             If this is explicitly set to 0, we'll run with no maximum. \
             Defaults to 10kpps. Keep in mind that faster != better.")
             .long("rate-limit")
-            .takes_value(true))
-        .arg(Arg::new("listening_port")
-            .help("Sets the port to listen on. If unset, armada will pick a random port from 50000-60000.")
-            .long("listening-port")
             .takes_value(true))
         .arg(Arg::new("retries")
             .help("Sets the number of additional attempts aramada will take to verify that a port is open. Setting this to '0' will result in ports only being checked once. Defaults to 2.")

@@ -20,9 +20,10 @@ armada_lib = { version = "1", path = "../armada_lib" }
 cidr-utils = "0"
 clap = { version = "3", features = ["cargo"] }
 console = "0"
+csv = "1.1"
 indicatif = "0"
 rand = "0"
 regex = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"]}
 toml = "0"
-serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
