@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
 use std::io::{stdin, BufRead};
 use std::net::IpAddr;
+use std::net::ToSocketAddrs;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -85,6 +86,13 @@ fn get_targets(matches: &ArgMatches) -> HostIterator {
         .fold(HostIterator::new(), |host_iterator, target_str| {
             if let Ok(ip_addr) = IpAddr::from_str(&target_str) {
                 host_iterator.add_ip(ip_addr)
+            } else if let Ok(mut addresses) = (target_str.clone(), 0).to_socket_addrs() {
+                if let Some(ip_addr) = addresses.next() {
+                    println!("{}", ip_addr);
+                    host_iterator.add_ip(ip_addr.ip())
+                } else {
+                    host_iterator
+                }
             } else {
                 // we'll force this to parse. If it fails, then an illegal value was placed into the target list and we should panic here.
                 let cidr = IpCidr::from_str(&target_str).expect(&format!("Unable to parse target '{}'.", target_str));
