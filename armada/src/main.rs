@@ -1,12 +1,11 @@
 mod args;
+mod config;
 mod ranges;
 mod run_variants;
-mod config;
 
-use std::net::{
-    IpAddr,
-    Ipv4Addr,
-    Ipv6Addr,
+use std::{
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
 use armada_lib::Armada;
@@ -18,13 +17,14 @@ async fn main() {
     let ArmadaConfig {
         targets,
         ports,
+        json_format,
         quiet_mode,
         rate_limit,
         listening_port,
         retries,
         timeout,
         source_ips,
-        stream_results
+        stream_results,
     } = args::get_armada_config();
 
     let armada = Armada::new(listening_port);
@@ -35,24 +35,68 @@ async fn main() {
         use run_variants::QuietArmada;
 
         armada
-            .run_quiet(targets, ports, source_ipv4, source_ipv6, retries, timeout, rate_limit, stream_results)
+            .run_quiet(
+                targets,
+                ports,
+                source_ipv4,
+                source_ipv6,
+                retries,
+                timeout,
+                rate_limit,
+                stream_results,
+            )
             .await
     } else {
         use run_variants::ProgressArmada;
 
         armada
-            .run_with_stats(targets, ports, source_ipv4, source_ipv6, retries, timeout, rate_limit, stream_results)
+            .run_with_stats(
+                targets,
+                ports,
+                source_ipv4,
+                source_ipv6,
+                retries,
+                timeout,
+                rate_limit,
+                stream_results,
+            )
             .await
     };
 
-    if !stream_results {
-        syn_scan_results.sort();
-
-        syn_scan_results.into_iter().for_each(|remote| {
-            println!("{}:{}", remote.ip(), remote.port());
-        });
+    if stream_results {
+        return;
     }
+    syn_scan_results.sort();
+
+    if json_format {
+        // there is probably a better way to do this
+        // I thought using a hashmap might be slow, but I tested it with 10,000 IP/PORT pairs and it took 72 millis so its negligible
+        let mut pairs: HashMap<String, Vec<u16>> = HashMap::new(); 
+        for addr in syn_scan_results {
+            let ip = addr.ip().to_string();
+            if let Some(ports) = pairs.get_mut(&ip) {
+                ports.push(addr.port());
+            } else {
+                pairs.insert(ip, vec![addr.port()]);
+            }
+        }
+        let json_output = serde_json::to_string(&pairs).expect("Failed to format armada output as JSON");
+        println!("{}", json_output);
+        return;
+    }
+
+    syn_scan_results.into_iter().for_each(|remote| {
+        println!("{}:{}", remote.ip(), remote.port());
+    });
 }
+
+/*
+    8.8.8.8: [
+        53,
+        443,
+        853
+    ]
+*/
 
 async fn split_and_enforce_source_ips(source_ips: Option<Vec<IpAddr>>) -> (Vec<Ipv4Addr>, Vec<Ipv6Addr>) {
     // we need to try to

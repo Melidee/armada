@@ -19,6 +19,7 @@ const DEFAULT_TIMEOUT_IN_MS: u64 = 1_000;
 pub(crate) struct ArmadaConfig {
     pub(crate) targets: HostIterator,
     pub(crate) ports: PortIterator,
+    pub(crate) json_format: bool,
     pub(crate) quiet_mode: bool,
     pub(crate) rate_limit: Option<usize>,
     pub(crate) listening_port: u16,
@@ -37,6 +38,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
 
     let targets = get_targets(&matches);
     let ports = get_ports(&matches);
+    let json = get_json_format(&matches);
     let quiet_mode = get_quiet_mode(&matches);
     let rate_limit = get_rate_limit(&matches);
     let listening_port = get_listening_port(&matches);
@@ -54,6 +56,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
     ArmadaConfig {
         targets,
         ports,
+        json_format: json,
         quiet_mode,
         rate_limit,
         listening_port,
@@ -137,6 +140,10 @@ fn get_ports(matches: &ArgMatches) -> PortIterator {
                 _ => panic!("Failed to interpret port flag with value '{}'.", port_str),
             }
         })
+}
+
+fn get_json_format(matches: &ArgMatches) -> bool {
+    matches.is_present("json")
 }
 
 fn get_quiet_mode(matches: &ArgMatches) -> bool {
@@ -237,6 +244,11 @@ fn app_config() -> Command<'static> {
             .value_delimiter(',')
             .conflicts_with_all(&["top100", "top1000"])
             .required_unless_present_any(&["top100", "top1000", "toml_config"]))
+        .arg(Arg::new("json_format")
+            .help("Outputs results in json format.")
+            .short('j')
+            .long("json")
+            .takes_value(false))
         .arg(Arg::new("quiet")
             .help("Disables any progress reporting during the scan.")
             .short('q')
