@@ -90,14 +90,6 @@ async fn main() {
     });
 }
 
-/*
-    8.8.8.8: [
-        53,
-        443,
-        853
-    ]
-*/
-
 async fn split_and_enforce_source_ips(source_ips: Option<Vec<IpAddr>>) -> (Vec<Ipv4Addr>, Vec<Ipv6Addr>) {
     // we need to try to
     let source_ips = match source_ips {
