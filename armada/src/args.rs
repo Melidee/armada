@@ -9,7 +9,6 @@ use armada_lib::{HostIterator, PortIterator};
 use atty::Stream;
 use cidr_utils::cidr::IpCidr;
 use clap::{crate_version, Arg, ArgGroup, ArgMatches, Command};
-use rand::Rng;
 
 use crate::config::get_toml_config;
 
@@ -88,7 +87,6 @@ fn get_targets(matches: &ArgMatches) -> HostIterator {
                 host_iterator.add_ip(ip_addr)
             } else if let Ok(mut addresses) = (target_str.clone(), 0).to_socket_addrs() {
                 if let Some(ip_addr) = addresses.next() {
-                    println!("{}", ip_addr);
                     host_iterator.add_ip(ip_addr.ip())
                 } else {
                     host_iterator
@@ -175,7 +173,7 @@ fn get_listening_port(matches: &ArgMatches) -> u16 {
                 .parse::<u16>()
                 .expect(&format!("Unable to parse listening port value '{}'.", value))
         })
-        .unwrap_or_else(|| rand::thread_rng().gen_range(50_000..60_000))
+        .unwrap_or_else(|| rand::random_range(50_000..60_000))
 }
 
 fn get_retries(matches: &ArgMatches) -> u8 {
