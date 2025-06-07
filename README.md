@@ -25,7 +25,7 @@ sudo setcap 'cap_net_raw+ep' $(which armada)
 Armada comes with help docs by running `armada -h`; however, if you want to get started immediately, the typical way to perform a port scan is the following:
 
 ```
-armada -t <IP or CIDR> -p <PORT or PORT RANGE>
+armada -t <IP, CIDR or Domain> -p <PORT or PORT RANGE>
 ```
 
 e.g.
@@ -35,7 +35,7 @@ armada -t 8.8.8.0/24 -p 1-1000
 ```
 
 ### Targets
-Armada supports two different kinds of targets at this time: IP addresses (e.g. `1.2.3.4`) and CIDR ranges (e.g. `8.8.8.0/24`). These different kinds of targets can be mix and matched.
+Armada supports three different kinds of targets at this time: IP addresses (e.g. `1.2.3.4`), CIDR ranges (e.g. `8.8.8.0/24`), and domain names (e.g. `google.com`). These different kinds of targets can be mix and matched.
 
 Additionally, Armada supports three ways of supplying targets:
 
@@ -46,7 +46,7 @@ armada -t 1.2.3.4,8.8.8.0/24 -p 1-1000
 
 A newline delimited targets file
 ```
-armada --target_file some_ips_and_cidrs.txt -p 1-1000
+armada --target_file some_target_addresses.txt -p 1-1000
 ```
 
 or via stdin
