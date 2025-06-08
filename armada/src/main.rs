@@ -1,13 +1,9 @@
 mod args;
+mod config;
 mod ranges;
 mod run_variants;
-mod config;
 
-use std::net::{
-    IpAddr,
-    Ipv4Addr,
-    Ipv6Addr,
-};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use armada_lib::Armada;
 
@@ -17,6 +13,7 @@ use crate::args::ArmadaConfig;
 async fn main() {
     let ArmadaConfig {
         targets,
+        target_domains,
         ports,
         quiet_mode,
         rate_limit,
@@ -24,7 +21,7 @@ async fn main() {
         retries,
         timeout,
         source_ips,
-        stream_results
+        stream_results,
     } = args::get_armada_config();
 
     let armada = Armada::new(listening_port);
@@ -35,13 +32,31 @@ async fn main() {
         use run_variants::QuietArmada;
 
         armada
-            .run_quiet(targets, ports, source_ipv4, source_ipv6, retries, timeout, rate_limit, stream_results)
+            .run_quiet(
+                targets,
+                ports,
+                source_ipv4,
+                source_ipv6,
+                retries,
+                timeout,
+                rate_limit,
+                stream_results,
+            )
             .await
     } else {
         use run_variants::ProgressArmada;
 
         armada
-            .run_with_stats(targets, ports, source_ipv4, source_ipv6, retries, timeout, rate_limit, stream_results)
+            .run_with_stats(
+                targets,
+                ports,
+                source_ipv4,
+                source_ipv6,
+                retries,
+                timeout,
+                rate_limit,
+                stream_results,
+            )
             .await
     };
 
@@ -49,7 +64,12 @@ async fn main() {
         syn_scan_results.sort();
 
         syn_scan_results.into_iter().for_each(|remote| {
-            println!("{}:{}", remote.ip(), remote.port());
+            let ip = if let Some(domain) = target_domains.get(&remote.ip()) { // use stored domain name if one exists
+                domain
+            } else {
+                &remote.ip().to_string()
+            };
+            println!("{}:{}", ip, remote.port());
         });
     }
 }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::io::{stdin, BufRead};
 use std::net::IpAddr;
@@ -18,6 +19,7 @@ const DEFAULT_TIMEOUT_IN_MS: u64 = 1_000;
 
 pub(crate) struct ArmadaConfig {
     pub(crate) targets: HostIterator,
+    pub(crate) target_domains: HashMap<IpAddr, String>,
     pub(crate) ports: PortIterator,
     pub(crate) quiet_mode: bool,
     pub(crate) rate_limit: Option<usize>,
@@ -35,7 +37,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
         matches = app_config().get_matches_from(args);
     }
 
-    let targets = get_targets(&matches);
+    let (targets, target_domains) = get_targets(&matches);
     let ports = get_ports(&matches);
     let quiet_mode = get_quiet_mode(&matches);
     let rate_limit = get_rate_limit(&matches);
@@ -53,6 +55,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
 
     ArmadaConfig {
         targets,
+        target_domains,
         ports,
         quiet_mode,
         rate_limit,
@@ -64,7 +67,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
     }
 }
 
-fn get_targets(matches: &ArgMatches) -> HostIterator {
+fn get_targets(matches: &ArgMatches) -> (HostIterator, HashMap<IpAddr, String>) {
     let targets: Vec<String> = if let Some(targets_cli) = matches.values_of("targets") {
         // use targets passed in via cli
         targets_cli.map(str::to_owned).collect()
@@ -80,25 +83,31 @@ fn get_targets(matches: &ArgMatches) -> HostIterator {
         stdin().lock().lines().filter_map(Result::ok).collect()
     };
 
-    targets
-        .into_iter()
-        .fold(HostIterator::new(), |host_iterator, target_str| {
-            if let Ok(ip_addr) = IpAddr::from_str(&target_str) {
-                host_iterator.add_ip(ip_addr)
-            } else if let Some(ip_addr) = (target_str.clone(), 0) // resolve ip address of domain
-                .to_socket_addrs()
-                .ok()
-                .map(|mut addrs| addrs.next())
-                .flatten()
-            {
-                host_iterator.add_ip(ip_addr.ip())
-            } else {
-                // we'll force this to parse. If it fails, then an illegal value was placed into the target list and we should panic here.
-                let cidr = IpCidr::from_str(&target_str).expect(&format!("Unable to parse target '{}'.", target_str));
+    let mut target_domains = HashMap::new();
+    (
+        targets
+            .into_iter()
+            .fold(HostIterator::new(), |host_iterator, target_str| {
+                if let Ok(ip_addr) = IpAddr::from_str(&target_str) {
+                    host_iterator.add_ip(ip_addr)
+                } else if let Some(ip_addr) = (target_str.clone(), 0) // resolve ip address of domain
+                    .to_socket_addrs()
+                    .ok()
+                    .map(|mut addrs| addrs.next())
+                    .flatten()
+                {
+                    target_domains.insert(ip_addr.ip(), target_str); // store the domain name for this IP so we can print it later
+                    host_iterator.add_ip(ip_addr.ip())
+                } else {
+                    // we'll force this to parse. If it fails, then an illegal value was placed into the target list and we should panic here.
+                    let cidr =
+                        IpCidr::from_str(&target_str).expect(&format!("Unable to parse target '{}'.", target_str));
 
-                host_iterator.add_cidr(cidr)
-            }
-        })
+                    host_iterator.add_cidr(cidr)
+                }
+            }),
+        target_domains,
+    )
 }
 
 fn get_ports(matches: &ArgMatches) -> PortIterator {
