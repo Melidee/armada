@@ -15,6 +15,7 @@ async fn main() {
         targets,
         target_domains,
         ports,
+        ip_only,
         quiet_mode,
         rate_limit,
         listening_port,
@@ -64,10 +65,9 @@ async fn main() {
         syn_scan_results.sort();
 
         syn_scan_results.into_iter().for_each(|remote| {
-            let ip = if let Some(domain) = target_domains.get(&remote.ip()) { // use stored domain name if one exists
-                domain
-            } else {
-                &remote.ip().to_string()
+            let ip = match target_domains.get(&remote.ip()) {
+                Some(domain) if !ip_only => domain,
+                _ => &remote.ip().to_string()
             };
             println!("{}:{}", ip, remote.port());
         });

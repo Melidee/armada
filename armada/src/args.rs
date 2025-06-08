@@ -21,6 +21,7 @@ pub(crate) struct ArmadaConfig {
     pub(crate) targets: HostIterator,
     pub(crate) target_domains: HashMap<IpAddr, String>,
     pub(crate) ports: PortIterator,
+    pub(crate) ip_only: bool,
     pub(crate) quiet_mode: bool,
     pub(crate) rate_limit: Option<usize>,
     pub(crate) listening_port: u16,
@@ -39,6 +40,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
 
     let (targets, target_domains) = get_targets(&matches);
     let ports = get_ports(&matches);
+    let ip_only = get_ip_only_mode(&matches);
     let quiet_mode = get_quiet_mode(&matches);
     let rate_limit = get_rate_limit(&matches);
     let listening_port = get_listening_port(&matches);
@@ -57,6 +59,7 @@ pub(crate) fn get_armada_config() -> ArmadaConfig {
         targets,
         target_domains,
         ports,
+        ip_only,
         quiet_mode,
         rate_limit,
         listening_port,
@@ -153,6 +156,10 @@ fn get_ports(matches: &ArgMatches) -> PortIterator {
                 _ => panic!("Failed to interpret port flag with value '{}'.", port_str),
             }
         })
+}
+
+fn get_ip_only_mode(matches: &ArgMatches) -> bool {
+    matches.is_present("ip_only")
 }
 
 fn get_quiet_mode(matches: &ArgMatches) -> bool {
@@ -253,6 +260,10 @@ fn app_config() -> Command<'static> {
             .value_delimiter(',')
             .conflicts_with_all(&["top100", "top1000"])
             .required_unless_present_any(&["top100", "top1000", "toml_config"]))
+        .arg(Arg::new("ip_only")
+            .help("Outputs only resolved IP addresses instead of domain names.")
+            .long("ip-only")
+            .takes_value(false))
         .arg(Arg::new("quiet")
             .help("Disables any progress reporting during the scan.")
             .short('q')
